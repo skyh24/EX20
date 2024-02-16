@@ -1,80 +1,10 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-interface IERC20 {
-    function name() external view returns (string memory);
+import {EX20} from "./EX20.sol";
+import {IERC20} from "./IERC20.sol";
 
-    function symbol() external view returns (string memory);
-
-    function decimals() external view returns (uint8);
-
-    function totalSupply() external view returns (uint256);
-
-    function balanceOf(address account) external view returns (uint256);
-
-    function transfer(
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-
-    function allowance(
-        address owner,
-        address spender
-    ) external view returns (uint256);
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-}
-
-interface IPlugin {
-    function afterDeposit(address sender, uint256 amount) external;
-
-    function afterWithdraw(address sender, uint256 amount) external;
-
-    function afterTransfer(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external;
-
-    function afterApprove(
-        address sender,
-        address spender,
-        uint256 amount
-    ) external;
-}
-
-abstract contract EX20 {
-    IPlugin[] public plugins;
-    address public owner;
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
-    }
-
-    function addPlugin(IPlugin plugin) public onlyOwner {
-        plugins.push(plugin);
-    }
-
-    function removePlugin(IPlugin plugin) public onlyOwner {
-        for (uint i = 0; i < plugins.length; i++) {
-            if (plugins[i] == plugin) {
-                plugins[i] = plugins[plugins.length - 1];
-                plugins.pop();
-                return;
-            }
-        }
-    }
-
-    function exCallback(address addr, int256 amount) public virtual;
-}
-
-contract WrapToken is IERC20, EX20 {
+contract WrapToken is EX20 {
     IERC20 public underlyingToken;
     string public name;
     string public symbol;
@@ -95,7 +25,7 @@ contract WrapToken is IERC20, EX20 {
 
     constructor(IERC20 token) {
         underlyingToken = token;
-        name = string(abi.encodePacked(token.name(), " extension"));
+        name = string(abi.encodePacked(token.name(), " Extension"));
         symbol = string(abi.encodePacked(token.symbol(), "X"));
         decimals = token.decimals();
         owner = msg.sender;
@@ -106,7 +36,6 @@ contract WrapToken is IERC20, EX20 {
             underlyingToken.transferFrom(msg.sender, address(this), amount),
             "Transfer failed"
         );
-        uint balance = balanceOf[msg.sender];
         balanceOf[msg.sender] += amount;
         totalSupply += amount;
         // notifiy plugins
@@ -118,7 +47,6 @@ contract WrapToken is IERC20, EX20 {
 
     function withdraw(uint amount) public {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
-        uint balance = balanceOf[msg.sender];
         balanceOf[msg.sender] -= amount;
         totalSupply -= amount;
         require(
@@ -138,7 +66,7 @@ contract WrapToken is IERC20, EX20 {
         for (uint i = 0; i < plugins.length; i++) {
             plugins[i].afterApprove(msg.sender, spender, amount);
         }
-        Approval(msg.sender, spender, amount);
+        emit Approval(msg.sender, spender, amount);
         return true;
     }
 
@@ -152,7 +80,7 @@ contract WrapToken is IERC20, EX20 {
         uint amount
     ) public returns (bool) {
         require(balanceOf[sender] >= amount);
-        if (sender != msg.sender && allowance[sender][msg.sender] != uint(-1)) {
+        if (sender != msg.sender && allowance[sender][msg.sender] != type(uint).max) {
             require(allowance[sender][msg.sender] >= amount);
             allowance[sender][msg.sender] -= amount;
         }
@@ -163,12 +91,12 @@ contract WrapToken is IERC20, EX20 {
         for (uint i = 0; i < plugins.length; i++) {
             plugins[i].afterTransfer(sender, recipient, amount);
         }
-        Transfer(sender, recipient, amount);
+        emit Transfer(sender, recipient, amount);
         return true;
     }
 
     function exCallback(address addr, int256 amount) public override {
-        require(msg.sender == address(underlyingToken), "Invalid caller");
+        require(hasPlugin[msg.sender], "Must be plugin");
         if (amount > 0) {
             balanceOf[addr] += uint(amount);
             totalSupply += uint(amount);
