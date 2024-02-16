@@ -1,12 +1,8 @@
-# <h1 align="center"> Forge Template </h1>
-
-**Template repository for getting started quickly with Foundry projects**
-
-![Github Actions](https://github.com/foundry-rs/forge-template/workflows/CI/badge.svg)
+# <h1 align="center"> EX20 Template </h1>
 
 ## Getting Started
 
-Click "Use this template" on [GitHub](https://github.com/foundry-rs/forge-template) to create a new repository with this repo as the initial state.
+A new type of wrap erc20 into extended ex20
 
 Or, if your repo already exists, run:
 ```sh
@@ -15,25 +11,76 @@ forge build
 forge test
 ```
 
-## Writing your first test
+## Development
 
-All you need is to `import forge-std/Test.sol` and then inherit it from your test contract. Forge-std's Test contract comes with a pre-instatiated [cheatcodes environment](https://book.getfoundry.sh/cheatcodes/), the `vm`. It also has support for [ds-test](https://book.getfoundry.sh/reference/ds-test.html)-style logs and assertions. Finally, it supports Hardhat's [console.log](https://github.com/brockelmore/forge-std/blob/master/src/console.sol). The logging functionalities require `-vvvv`.
+[MyToken](./src/MyToken.sol) is the base token
 
+[EX20](./src/EX20.sol) is EX20 base contract
 ```solidity
-pragma solidity 0.8.10;
+abstract contract EX20 is IERC20 {
+    IPlugin[] public plugins;
+    mapping(address => bool) public hasPlugin;
 
-import "forge-std/Test.sol";
+    address public owner;
 
-contract ContractTest is Test {
-    function testExample() public {
-        vm.roll(100);
-        console.log(1);
-        emit log("hi");
-        assertTrue(true);
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
     }
+
+    function addPlugin(IPlugin plugin) public onlyOwner {
+        plugins.push(plugin);
+        hasPlugin[address(plugin)] = true;
+    }
+
+    function removePlugin(IPlugin plugin) public onlyOwner {
+        for (uint i = 0; i < plugins.length; i++) {
+            if (plugins[i] == plugin) {
+                plugins[i] = plugins[plugins.length - 1];
+                plugins.pop();
+                delete hasPlugin[address(plugin)];
+                return;
+            }
+        }
+    }
+
+    function exCallback(address addr, int256 amount) public virtual;
+}
+```
+[WrapToken](./src/WrapToken.sol) wrap erc20 token
+```solidity
+
+ // notifiy plugins
+for (uint i = 0; i < plugins.length; i++) {
+    plugins[i].afterTransfer(sender, recipient, amount);
 }
 ```
 
-## Development
+[IPlugin](./src/IPlugin.sol) IPlugin interface use hook
+```solidity
 
-This project uses [Foundry](https://getfoundry.sh). See the [book](https://book.getfoundry.sh/getting-started/installation.html) for instructions on how to install and use Foundry.
+interface IPlugin {
+    function afterDeposit(address sender, uint256 amount) external;
+
+    function afterWithdraw(address sender, uint256 amount) external;
+
+    function afterTransfer(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external;
+
+    function afterApprove(
+        address sender,
+        address spender,
+        uint256 amount
+    ) external;
+}
+```
+
+[EX404Plugin](./src/EX404Plugin.sol) IPlugin ERC404 implements, can has SBT and other tokens
+
+
+## Test
+
+[EX20.t](./src/EX20.t.sol)
