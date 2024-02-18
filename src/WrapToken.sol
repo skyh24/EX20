@@ -95,15 +95,11 @@ contract WrapToken is EX20 {
         return true;
     }
 
-    function exCallback(address addr, int256 amount) public override {
+    function transferCallback(address from, address to, uint256 amount) external override {
         require(hasPlugin[msg.sender], "Must be plugin");
-        if (amount > 0) {
-            balanceOf[addr] += uint(amount);
-            totalSupply += uint(amount);
-        } else {
-            require(balanceOf[addr] >= uint(-amount), "Insufficient balance");
-            balanceOf[addr] -= uint(-amount);
-            totalSupply -= uint(-amount);
-        }
+        require(balanceOf[from] >= amount, "Insufficient balance");
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
     }
 }

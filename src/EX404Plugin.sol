@@ -3,10 +3,11 @@ pragma solidity ^0.8.0;
 
 import "solmate/tokens/ERC721.sol";
 import "openzeppelin-contracts/contracts/utils/Strings.sol";
-import {IPlugin, EX20} from "./EX20.sol";
+import {IEX20} from "./EX20.sol";
+import {IPlugin} from "./IPlugin.sol";
 
 contract EX404Plugin is IPlugin, ERC721 {
-    EX20 public exToken;
+    IEX20 public tokenExt;
     uint8 public immutable decimals;
     mapping(address => uint) public exBalanceOf;
 
@@ -33,9 +34,9 @@ contract EX404Plugin is IPlugin, ERC721 {
     /// @dev Tracks indices for the _owned mapping
     mapping(uint256 => uint256) internal _ownedIndex;
 
-    constructor(EX20 token) ERC721("EX404Plugin", "EX404") {
-        exToken = token;
-        decimals = exToken.decimals();
+    constructor(IEX20 token) ERC721("EX404Plugin", "EX404") {
+        tokenExt = token;
+        decimals = tokenExt.decimals();
     }
 
     function afterDeposit(address sender, uint256 amount) external override {
@@ -120,8 +121,7 @@ contract EX404Plugin is IPlugin, ERC721 {
         _ownedIndex[id] = _owned[to].length - 1;
 
         // call back to the EX20 contract
-        exToken.exCallback(from, -int256(_getUnit()));
-        exToken.exCallback(to, int256(_getUnit()));
+        tokenExt.transferCallback(from, to, id);
 
         emit Transfer(from, to, id);
     }

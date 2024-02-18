@@ -4,7 +4,12 @@ pragma solidity ^0.8.0;
 import {IERC20} from "./IERC20.sol";
 import {IPlugin} from "./IPlugin.sol";
 
-abstract contract EX20 is IERC20 {
+interface IEX20 is IERC20 {
+    // for plugins transfer callback
+    function transferCallback(address from, address to, uint256 value) external;
+}
+
+abstract contract EX20 is IEX20 {
     IPlugin[] public plugins;
     mapping(address => bool) public hasPlugin;
 
@@ -31,5 +36,5 @@ abstract contract EX20 is IERC20 {
         }
     }
 
-    function exCallback(address addr, int256 amount) public virtual;
+    function transferCallback(address from, address to, int256 amount) external virtual {}
 }

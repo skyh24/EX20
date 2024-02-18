@@ -65,7 +65,7 @@ contract TestContract is Test {
         emit log_uint(plugin.balanceOf(plugin_addr));
     }
 
-    function testTransferNFT(uint256 x) public {
+    function testTransferNFT() public {
         wtoken.deposit(1000000000);
         wtoken.transfer(plugin_addr, 500000000);
         assert(wtoken.balanceOf(this_addr) == 500000000);
