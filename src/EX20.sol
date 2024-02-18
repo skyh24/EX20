@@ -5,7 +5,6 @@ import {IERC20} from "./IERC20.sol";
 import {IPlugin} from "./IPlugin.sol";
 
 interface IEX20 is IERC20 {
-    // for plugins transfer callback
     function transferCallback(address from, address to, uint256 value) external;
 }
 

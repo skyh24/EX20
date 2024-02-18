@@ -17,7 +17,11 @@ forge test
 
 [EX20](./src/EX20.sol) is EX20 base contract
 ```solidity
-abstract contract EX20 is IERC20 {
+interface IEX20 is IERC20 {
+    function transferCallback(address from, address to, uint256 value) external;
+}
+
+abstract contract EX20 is IEX20 {
     IPlugin[] public plugins;
     mapping(address => bool) public hasPlugin;
 
@@ -44,7 +48,7 @@ abstract contract EX20 is IERC20 {
         }
     }
 
-    function exCallback(address addr, int256 amount) public virtual;
+    function transferCallback(address from, address to, int256 amount) external virtual {}
 }
 ```
 [WrapToken](./src/WrapToken.sol) wrap erc20 token
